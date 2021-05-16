@@ -12,18 +12,19 @@ from tensorflow.keras.models import Sequential
 
 #Se ingresa la direccion que contiene las clases de clasificacion
 #Se considera una carpeta para cada clase con  imagenes que la representan dentro de ella
+#definición de rutas
 dirname = os.path.abspath(os.path.dirname(os.path.abspath(__file__))) + '\\data\\clases'
-print(dirname)
+head_ct_url = os.path.abspath(os.path.dirname(os.path.abspath(__file__))) + '\\data\\analyze\\099.png'
 
 #Parametros de carga:
 batch_size = 32
 img_height = 180
 img_width = 180
 num_classes = 2
-epochs=15
+epochs=20
 
 #Definicion de datos de entrenamiento
-training = tf.keras.preprocessing.image_dataset_from_directory(
+DS_training = tf.keras.preprocessing.image_dataset_from_directory(
     dirname, 
     labels='inferred', 
     label_mode='int',
@@ -39,7 +40,7 @@ training = tf.keras.preprocessing.image_dataset_from_directory(
 )
 
 #Definicion de datos de validación
-validation = tf.keras.preprocessing.image_dataset_from_directory(
+DS_validation = tf.keras.preprocessing.image_dataset_from_directory(
     dirname, 
     labels='inferred', 
     label_mode='int',
@@ -54,21 +55,15 @@ validation = tf.keras.preprocessing.image_dataset_from_directory(
     follow_links=False
 )
 
-#Imprimir nombres de las clases
-classes = training.class_names
-print(classes)
+#Definimos el número de clases
+classes = DS_training.class_names
 
-#Imprimir shape de los modelos
-for image_batch, labels_batch in training:
-  print(image_batch.shape)
-  print(labels_batch.shape)
-  break
 
 
 #Agregar AUTOTUNE al modelo, esto ayudará a que no se hagan cuellos  de botella
 AUTOTUNE = tf.data.AUTOTUNE
-training = training.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
-val_ds = training.cache().prefetch(buffer_size=AUTOTUNE)
+DS_training = DS_training.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
+DS_validation = DS_validation.cache().prefetch(buffer_size=AUTOTUNE)
 
 
 #Se crea un layer de normalizacion para estandarizar datos
@@ -77,20 +72,16 @@ normalization_layer = layers.experimental.preprocessing.Rescaling(1./255)
 #Tecnicas de mejora de precisión
 #Data augmentation: Medida en contra del overfitting(falta de imagenes de entrenamiento)
 #Multiplica las imagenes y las entrena en otros angulos
-
+KPreprocessing = layers.experimental.preprocessing
 data_augmentation = keras.Sequential(
   [
-    layers.experimental.preprocessing.RandomFlip("horizontal", 
-                                                 input_shape=(img_height, 
-                                                              img_width,
-                                                              3)),
-    layers.experimental.preprocessing.RandomRotation(0.1),
-    layers.experimental.preprocessing.RandomZoom(0.1),
+    KPreprocessing.RandomFlip("horizontal", input_shape=(img_height, img_width, 3)),
+    KPreprocessing.RandomFlip("horizontal_and_vertical", input_shape=(img_height, img_width, 3)),
+    KPreprocessing.RandomRotation(0.1),
+    KPreprocessing.RandomZoom(0.1),
+    #KPreprocessing.RandomCrop(0.1, 0.1)
   ]
 )
-
-#Dropout: 
-
 
 
 #Creación de modelo
@@ -109,64 +100,98 @@ model = Sequential([
   layers.Dense(num_classes)
 ])
 
+history = None
 
-#Compilar el modelo
-model.compile(optimizer='adam',
-              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-              metrics=['accuracy'])
+def getClasses():
+  #Imprimir nombres de las clases
+  return 'Clases: '+ '\n' + str(classes)
+  
 
+def getShape():
+  #Imprimir shape de los modelos
+  result = 'Estructura de los datos:\n'
+  for image_batch, labels_batch in DS_training:
+    result += str(image_batch.shape) + '\n'
+    result += str(labels_batch.shape)
+    break
+  return result
 
-# Imprime el resumen de los datos del modelo
-model.summary()
+def getDirectory():
+  result = 'Carpeta de datos de entrenamiento:' + '\n'+dirname +'\n'
+  result += 'Carpeta de datos de entrada:' +'\n'+ head_ct_url
+  return result
 
-# Entrenamiento del modelo
-history = model.fit(
-  training,
-  validation=val_ds,
-  epochs=epochs
-)
-
-
-
-
-# Impresión y creación de graficas para visualizar datos de entrenamiento
-acc = history.history['accuracy']
-val_acc = history.history['val_accuracy']
-
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-
-epochs_range = range(epochs)
-
-plt.figure(figsize=(8, 8))
-plt.subplot(1, 2, 1)
-plt.plot(epochs_range, acc, label='Training Accuracy')
-plt.plot(epochs_range, val_acc, label='Validation Accuracy')
-plt.legend(loc='lower right')
-plt.title('Training and Validation Accuracy')
-
-plt.subplot(1, 2, 2)
-plt.plot(epochs_range, loss, label='Training Loss')
-plt.plot(epochs_range, val_loss, label='Validation Loss')
-plt.legend(loc='upper right')
-plt.title('Training and Validation Loss')
-plt.show()
+def getBeggining():
+  return getClasses() +"\n" + getDirectory()+"\n" +getShape() +"\n" 
 
 
+def train():
+  
+  #Compilar el modelo
+  model.compile(optimizer='adam',
+                loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                metrics=['accuracy'])
 
-head_ct_url = os.path.abspath(os.path.dirname(os.path.abspath(__file__))) + '\\data\\analyze\\099.png'
-print(head_ct_url)
 
-img = keras.preprocessing.image.load_img(
-    head_ct_url, target_size=(img_height, img_width)
-)
-img_array = keras.preprocessing.image.img_to_array(img)
-img_array = tf.expand_dims(img_array, 0) # Create a batch
+  # Imprime el resumen de los datos del modelo
+  model.summary()
 
-predictions = model.predict(img_array)
-score = tf.nn.softmax(predictions[0])
+  # Entrenamiento del modelo
+  global history 
+  history = model.fit(
+    DS_training,
+    validation_data=DS_validation,
+    epochs=epochs
+  )
 
-print(
-    "Esta imagen pertence al siguiente grupo \'{}\' con un porcentaje de confianza de {:.2f}."
-    .format(classes[np.argmax(score)], 100 * np.max(score))
-)
+
+
+
+
+
+
+def plot():
+  # Impresión y creación de graficas para visualizar datos de entrenamiento
+  if history is not None:
+    acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
+
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+
+    epochs_range = range(epochs)
+
+    plt.figure(figsize=(8, 8))
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs_range, acc, label='Certeza de entrenamiento')
+    plt.plot(epochs_range, val_acc, label='Certeza de validación')
+    plt.legend(loc='lower right')
+    plt.title('Certeza de entrenamiento y validación')
+
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs_range, loss, label='Función de perdida')
+    plt.plot(epochs_range, val_loss, label='Función de perdida')
+    plt.plot(epochs_range, loss, label='Perdida de entrenamiento')
+    plt.plot(epochs_range, val_loss, label='Perdida de validación')
+    plt.legend(loc='upper right')
+    plt.title('Función de perdida')
+    plt.show()
+  else:
+    print('Not found')
+
+def predict():
+
+
+  img = keras.preprocessing.image.load_img(
+      head_ct_url, target_size=(img_height, img_width)
+  )
+  img_array = keras.preprocessing.image.img_to_array(img)
+  img_array = tf.expand_dims(img_array, 0) # Create a batch
+
+  predictions = model.predict(img_array)
+  score = tf.nn.softmax(predictions[0])
+
+  print(
+      "Esta imagen pertence al siguiente grupo \'{}\' con un porcentaje de confianza de {:.2f}."
+      .format(classes[np.argmax(score)], 100 * np.max(score))
+  )
