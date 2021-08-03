@@ -1,10 +1,11 @@
+import os
 import tkinter as tk
 import tkinter.ttk as ttk
 from ttkthemes import ThemedTk
 from tkinter.constants import DISABLED, HORIZONTAL, RAISED
 from tkinter.font import NORMAL
 from tkinter import filedialog
-from app import getBeggining, getEpochNumber,train, plot, predict
+from app import getBeggining, getEpochNumber,train, plot, predict, setpredictingfile
 from compresion import comprise
 import time
 import threading
@@ -53,12 +54,15 @@ def Model_predict():
     txt_edit.insert(tk.END,texto, 'warning')
 
 
-def Open_dir():
+def Select_predictions():
     global file_path
     threading.Thread(target=start_download).start()
     #folder_path = filedialog.askdirectory()
     #print(folder_path)
     file_path =filedialog.askopenfilename()
+    file_path= os.path.normpath(file_path)
+    setpredictingfile(file_path)
+
     #txt_edit.insert(tk.END, file_path) # add this
     btn_train.config(state=NORMAL)
 
@@ -85,6 +89,8 @@ def quit():
 def change_theme(self):
         self.style.theme_use(self.selected_theme.get())
 
+def donothing():
+   x = 0
         
 window = ThemedTk(theme="elegance")
 window.title("Predicción de diagnostico, Hemorragía cerebral")
@@ -93,7 +99,6 @@ window.columnconfigure(1, minsize=900, weight=1)
 
 # Add some style
 
- 
 
 free_space = ttk.Frame(window,relief=RAISED)
 label2= ttk.Label(free_space,textvariable="Analisis",relief=RAISED)
@@ -106,7 +111,9 @@ txt_edit.tag_config('warning', background="yellow", foreground="red")
 
 fr_buttons = ttk.Frame(window,relief=RAISED)
 
-btn_open = ttk.Button(fr_buttons, text="Seleccionar directorio",command=Open_dir)
+fr_entries = ttk.Frame(window,relief=RAISED)
+
+btn_open = ttk.Button(fr_buttons, text="Seleccionar archivo a predecir",command=Select_predictions)
 btn_datos = ttk.Button(fr_buttons, text="Ver Datos iniciales",command=print_prev)
 btn_train = ttk.Button(fr_buttons, text="Entrenar",command=Model_train,state=DISABLED)
 btn_predict = ttk.Button(fr_buttons, text="Predecir resultado",command=Model_predict,state=DISABLED)
@@ -114,9 +121,15 @@ btn_plot = ttk.Button(fr_buttons, text="Graficar modelo",command=Model_plot,stat
 btn_comp = ttk.Button(fr_buttons, text="Compresion de datos",command=compdata)
 btn_exit = ttk.Button(fr_buttons, text="Salir",command=quit)
 
+label1 = ttk.Label(fr_entries,text="prueba")
+
+entry1 = ttk.Entry(fr_entries)
+entry1.insert(tk.END,'20')
+
 fr_buttons.grid(row=1, column=0, sticky="ns")
 free_space.grid(row=0,column=0,sticky="nsew",columnspan=2)
 txt_edit.grid(row=1, column=1, sticky="nsew")
+#fr_entries.grid(row=2,column=0,sticky="nsew")
 
 btn_open.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
 btn_datos.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
@@ -126,6 +139,8 @@ btn_plot.grid(row=4, column=0, sticky="ew", padx=5, pady=5)
 btn_comp.grid(row=5, column=0, sticky="ew", padx=5, pady=5)
 btn_exit.grid(row=6, column=0, sticky="ew", padx=5, pady=5)
 
+label1.grid(row=1, column=0,sticky="ew",padx=5,pady=5)
+entry1.grid(row=1, column=1)
 file_path = tk.StringVar()
 
 

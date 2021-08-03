@@ -14,14 +14,14 @@ from tensorflow.keras.models import Sequential
 #Se considera una carpeta para cada clase con  imagenes que la representan dentro de ella
 #definición de rutas
 dirname = os.path.abspath(os.path.dirname(os.path.abspath(__file__))) + '\\data\\clases'
-head_ct_url = os.path.abspath(os.path.dirname(os.path.abspath(__file__))) + '\\data\\analyze\\099.png'
+head_ct_url = 'No se ha seleccionado una imagen para predecir'
 
 #Parametros de carga:
 batch_size = 32
 img_height = 180
 img_width = 180
-num_classes = 2
-epochs=20
+num_classes = 20
+epochs=2
 
 #Definicion de datos de entrenamiento
 DS_training = tf.keras.preprocessing.image_dataset_from_directory(
@@ -122,7 +122,8 @@ def getDirectory():
   return result
 
 def getBeggining():
-  return getClasses() +"\n" + getDirectory()+"\n" +getShape() +"\n" 
+  #return getClasses() +"\n" + getDirectory()+"\n" +getShape() +"\n" 
+  return getClasses() +"\n" + getDirectory()+"\n"
 
 
 def train():
@@ -184,7 +185,6 @@ def getEpochNumber():
 
 def predict():
 
-
   img = keras.preprocessing.image.load_img(
       head_ct_url, target_size=(img_height, img_width)
   )
@@ -197,3 +197,7 @@ def predict():
   print(result)
 
   return result
+
+def setpredictingfile(predict_dir):
+  global head_ct_url
+  head_ct_url = predict_dir
